@@ -1,45 +1,52 @@
+import networkx as nx
 from mesa import Model
-from mesa.time import RandomActivation
 from mesa.space import NetworkGrid
-from mesa import Agent
+from mesa.time import RandomActivation
 from random import randint
-from woman import Woman  # Import the Woman agent class
+from agents import Woman       
 
-class GenderEqualityModel(Model):
-    """
-    A model simulating the intragroup dynamics of women based on gender role beliefs and submission levels.
-    The model uses an agent-based approach where agents (women) are placed in a network and can interact.
-    """
+class WomenIntragroupModel(Model):
 
-    def __init__(self, num_agents, network):
-        """
-        Initializes the model with agents and a social network.
-        
-        Args:
-            num_agents (int): Number of agents in the model.
-            network (NetworkGrid): The social network where agents are connected.
-        """
+    def __init__(self, num_agents: int,
+                 alpha: float = 20.0,      # homophily steepness
+                 seed: int | None = None):
+        super().__init__(seed=seed)
+
         self.num_agents = num_agents
-        self.network = network
-        
-        # Create a scheduler to manage the agents
-        self.schedule = RandomActivation(self)
-        
-        # Create agents with random Gender Role Beliefs (GRB) between 0 and 100
-        for i in range(self.num_agents):
-            grb = randint(0, 100)  # Assign random GRB to each agent
-            a = Woman(i, self, grb)  # Create a Woman agent with the generated GRB
-            self.schedule.add(a)  # Add the agent to the scheduler
-            
-            # Add agents to the network (fully connected for simplicity)
-            if i > 0:
-                self.network.add_edge(i, i - 1)  # Connect to the previous agent (can be customized)
-        
-        self.running = True
+        self.alpha      = alpha            # smaller = stricter homophily
+        self.schedule   = RandomActivation(self)
+
+        # -------- 1. Create agents & remember their GRB ---------------------
+        grb_values: list[int] = []
+        for uid in range(num_agents):
+            grb = self.random.randint(0, 100)       # single RNG stream
+            agent = Woman(uid, self, grb)
+            self.schedule.add(agent)
+            grb_values.append(grb)
+
+        # -------- 2. Build the homophily-based graph ------------------------
+        G = nx.Graph()
+        G.add_nodes_from(range(num_agents))
+
+        for i in range(num_agents):
+            for j in range(i + 1, num_agents):
+                # edge probability falls off with GRB distance
+                p = self._edge_prob(grb_values[i], grb_values[j])
+                if self.random.random() < p:
+                    G.add_edge(i, j)
+
+        # -------- 3. Wrap in Mesa’s NetworkGrid & place agents --------------
+        self.network = NetworkGrid(G)
+        for node_id, agent in enumerate(self.schedule.agents):
+            self.network.place_agent(agent, node_id)
+
+        self.running = True   
+
+    def _edge_prob(self, grb_i: int, grb_j: int) -> float:
+        """Exponential homophily kernel."""
+        delta = abs(grb_i - grb_j)
+        return pow(2.718281828459045, -delta / self.alpha)
+
 
     def step(self):
-        """
-        Advances the model by one step.
-        In each step, each agent interacts with its neighbors based on submission levels and GRBs.
-        """
-        self.schedule.step()  # Perform a step for each agent in the model
+        self.schedule.step()

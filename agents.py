@@ -61,13 +61,5 @@ class Woman(Agent):
             # If no connection exists, send a negative signal (for now, just updating a flag)
             self.send_negative_signal(other_agent)
 
-    def send_negative_signal(self, other_agent):
-        """
-        Sends a negative signal to another agent when there's no existing connection.
-        This could be a flag or other method in the model to represent a negative response.
-        
-        Args:
-            other_agent (Woman): The agent to receive the negative signal.
-        """
-        # Placeholder: For now, you can set a flag or simply track the interaction
-        other_agent.negative_signal = True  # Example of flagging the agent with a negative response
+    #def send_negative_signal(self, other_agent):
+       # Still unsure about the mechanism of sending negative signals
