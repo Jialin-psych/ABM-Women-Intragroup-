@@ -6,19 +6,18 @@ from mesa.visualization import (
     make_plot_component,
 )
 
-
-# Agent portrayal function with gradual blue and gray for blocked agents
 def agent_portrayal(agent):
-    blue_value = agent.grb  # a float between 0 and 1
-    # Create normalized RGB tuple (R,G,B) with B scaled by blue_value
-    color = (0, 0, blue_value) 
+    # Create a color gradient from red (low GRB) to blue (high GRB)
+    red = 1 - agent.grb  # red decreases as GRB increases
+    blue = agent.grb     # blue increases as GRB increases
+    color = (red, 0, blue)  # RGB tuple
     return {
         "color": color,
         "marker": 'o',
         "size": 20,
         "label": f"GRB: {agent.grb:.2f}",
     }
-
+    
 # Model parameters exposed as UI controls
 model_params = {
     "num_agents": {
@@ -74,13 +73,17 @@ model_params = {
         "max": 1,
         "step": 0.05,
     },
+    "seed": {
+        "type": "SliderInt",
+        "value": 42,
+        "label": "Random Seed",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+    },
 }
 
-# Instantiate model
-grb_model = GenderBeliefModel()
-# Function returning average GRB for plotting
-def average_grb_measure(model):
-    return model.compute_global_grb()
+grb_model =GenderBeliefModel()
 
 # Create visualization components
 space_graph = make_space_component(
@@ -88,17 +91,15 @@ space_graph = make_space_component(
     draw_grid=False,
 )
 
+# Create plot component for average GRB over time
 average_grb_plot = make_plot_component(
-    measure=average_grb_measure,
+    "Average_GRB"  
 )
 
 # Create SolaraViz page combining components and exposing parameters
 page = SolaraViz(
-    grb_model,
+    grb_model,  
     components=[space_graph, average_grb_plot],
     model_params=model_params,
     name="Gender Role Belief Model",
 )
-
-# Return the page for solara to render
-page
