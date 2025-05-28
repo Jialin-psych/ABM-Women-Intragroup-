@@ -17,21 +17,19 @@ class GenderBeliefModel(Model):
         self.activation_fraction = activation_fraction
         self.similarity_threshold = similarity_threshold
 
-        # Create a network for the agents
         self.network = Graph()
         self.grid = NetworkGrid(self.network)
         self._agents = {}  # Store agents by ID
-
-        # Create agents and add them to the model and network
         for i in range(self.num_agents):
-            agent = Woman(unique_id=i, model=self, alpha=self.alpha, beta=self.beta,
+            # Create the agent (Woman instance)
+            agent = Woman(unique_id=i, model=self, alpha=self.alpha, beta=self.beta, 
                           block_threshold=self.block_threshold, biased_activation=self.biased_activation)
-            if agent is None:
-                print(f"Agent creation failed for id {i}")
-            self._agents[i] = agent
-            self.network.add_node(i, agent=[])   # add node by agent ID
-            self.grid.place_agent(agent, i)  # place agent on node i
+            self._agents[i] = agent  # Store agent in the dictionary
 
+            # Add a node for each agent in the network
+            self.network.add_node(i)  # Add a node for each agent with the ID as the node
+            self.network.nodes[i]["agent"] = [] 
+            self.grid.place_agent(agent, i)  # Place agent on the node i in the network
         # Add edges between agents based on similarity
         self.connect_similar_agents()
 
@@ -57,14 +55,15 @@ class GenderBeliefModel(Model):
 
     def step(self):
         self.datacollector.collect(self)
-
+        print([self._agents])
         agent_ids = list(self._agents.keys())
+        
         n_activate = int(len(agent_ids) * self.activation_fraction)
         activated_ids = self.random.sample(agent_ids, n_activate)
 
         for agent_id in activated_ids:
-            agent = self._agents[agent_id]
-            agent.activate_and_send_info()  # active senders share info
+            active_agent = self._agents[agent_id]
+            active_agent.activate_and_send_info()  # active senders share info
 
         for agent in self._agents.values():
             agent.process_received_info()  # all update beliefs based on info
